@@ -33,7 +33,7 @@ export type Cont<Q = Term> = { id: Q; quads: Quad[] | QuadStore };
 /**
  * Type guard to check if quads is a QuadStore.
  */
-function isQuadStore(quads: Quad[] | QuadStore): quads is QuadStore {
+export function isQuadStore(quads: Quad[] | QuadStore): quads is QuadStore {
     return typeof (quads as QuadStore).getQuads === "function";
 }
 
@@ -501,8 +501,18 @@ export function subjects(): BasicLensM<Quad[] | QuadStore, Cont> {
             }));
         }
 
-        // Standard array processing
-        return (quads as Quad[]).map((x: Quad) => ({ id: x.subject, quads }));
+        // Standard array processing - preserve full quad array for each subject
+        // This is necessary for IRI-referenced PropertyShapes to be found
+        const uniqueSubjects = new Map();
+        (quads as Quad[]).forEach((q: Quad) => {
+            if (!uniqueSubjects.has(q.subject.value)) {
+                uniqueSubjects.set(q.subject.value, q.subject);
+            }
+        });
+        return Array.from(uniqueSubjects.values()).map((subject) => ({
+            id: subject,
+            quads,
+        }));
     }).named("subjects");
 }
 
